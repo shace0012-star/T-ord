@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truth or Dare - Multiplayer Edition</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 95%;
+            max-width: 900px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border: none;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.02);
+        }
+
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            padding: 1.2rem 2.5rem;
+            border-radius: 25px;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 0.8rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px 0 rgba(255, 107, 107, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px 0 rgba(255, 107, 107, 0.6);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .secondary-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2) !important;
+            box-shadow: 0 4px 15px 0 rgba(102, 126, 234, 0.4) !important;
+        }
+
+        .profile-setup {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+        }
+
+        .avatar-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .avatar-option {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+        }
+
+        .avatar-option:hover {
+            transform: scale(1.1);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .avatar-option.selected {
+            border-color: #ffd93d;
+            background: rgba(255, 215, 61, 0.3);
+            transform: scale(1.1);
+        }
+
+        .color-selector {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+
+        .color-option {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.selected {
+            border-color: white;
+            transform: scale(1.2);
+        }
+
+        .player-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .player-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+
+        .player-card.current-player {
+            border-color: #ffd93d;
+            box-shadow: 0 0 30px rgba(255, 215, 61, 0.6);
+            animation: glow 2s infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { 
+                box-shadow: 0 0 30px rgba(255, 215, 61, 0.6);
+            }
+            50% { 
+                box-shadow: 0 0 50px rgba(255, 215, 61, 1);
+            }
+        }
+
+        .player-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            position: relative;
+        }
+
+        .player-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .player-score {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin: 0.5rem 0;
+        }
+
+        .online-indicator {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #4caf50;
+            border: 2px solid white;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            margin: 2rem auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wheel {
+            width: 350px;
+            height: 350px;
+            border-radius: 50%;
+            border: 8px solid #ffd93d;
+            position: relative;
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        }
+
+        .wheel-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background: #333;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            z-index: 10;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .wheel-center:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            background: #444;
+        }
+
+        .wheel-arrow {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 30px solid #ffd93d;
+            z-index: 5;
+        }
+
+        .wheel-segment {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            transform-origin: 100% 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            text-align: center;
+        }
+
+        .challenge-type-wheel {
+            width: 200px;
+            height: 200px;
+            margin: 1rem auto;
+        }
+
+        .challenge-type-wheel .wheel {
+            width: 180px;
+            height: 180px;
+            background: conic-gradient(
+                from 0deg,
+                #ff6b6b 0deg 180deg,
+                #4ecdc4 180deg 360deg
+            );
+        }
+
+        .truth-dare-labels {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .truth-label, .dare-label {
+            position: absolute;
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .truth-label {
+            top: 25%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .dare-label {
+            bottom: 25%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .game-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffd93d;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 0.5rem;
+        }
+
+        .voting-panel {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+        }
+
+        .vote-options {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+
+        .vote-btn {
+            padding: 1rem 2rem !important;
+            border-radius: 15px !important;
+            font-size: 1.1rem !important;
+            margin: 0.5rem !important;
+        }
+
+        .vote-btn.voted {
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1) !important;
+            transform: scale(0.95) !important;
+        }
+
+        .room-info {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin: 1rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .room-code {
+            font-family: monospace;
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            color: #ffd93d;
+        }
+
+        .host-badge {
+            background: linear-gradient(45deg, #ffd93d, #ff6b6b);
+            color: #333;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .game-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 1000;
+            border-radius: 20px;
+        }
+
+        .game-overlay.active {
+            display: flex;
+        }
+
+        .challenge-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 3rem;
+            border-radius: 20px;
+            max-width: 600px;
+            margin: 2rem;
+            font-size: 1.4rem;
+            line-height: 1.6;
+            text-align: center;
+            border: 3px solid rgba(255, 215, 61, 0.5);
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .emoji {
+            font-size: 1.8rem;
+            margin: 0 0.5rem;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.9);
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            color: white;
+            z-index: 1001;
+            max-width: 300px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .notification.success {
+            background: rgba(76, 175, 80, 0.9);
+        }
+
+        .notification.error {
+            background: rgba(244, 67, 54, 0.9);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+                width: 98%;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .player-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 1rem;
+            }
+            
+            .room-info {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .room-code {
+                font-size: 1.4rem;
+            }
+            
+            .wheel-container {
+                width: 300px;
+                height: 300px;
+            }
+
+            .wheel {
+                width: 250px;
+                height: 250px;
+            }
+
+            .avatar-selector {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Landing Screen -->
+        <div id="landingScreen" class="screen active">
+            <h1>Truth or Dare</h1>
+            <p class="subtitle">Multiplayer Edition <span class="emoji">🎮</span></p>
+            <p style="margin-bottom: 2rem; font-size: 1.1rem; opacity: 0.9;">
+                The ultimate real-time party game for university friends!<br>
+                Create your profile, join rooms, and play together live!
+            </p>
+            
+            <div style="background: rgba(255, 255, 255, 0.1); padding: 2rem; border-radius: 15px; margin: 2rem 0;">
+                <h3 style="margin-bottom: 1rem;">🎯 Features:</h3>
+                <p style="margin-bottom: 1rem;">🔥 <strong>Real-Time Sync</strong> - Everyone sees the same game</p>
+                <p style="margin-bottom: 1rem;">🎨 <strong>Custom Profiles</strong> - Create your unique avatar</p>
+                <p style="margin-bottom: 1rem;">🎡 <strong>Spin Wheel</strong> - Fair random selection</p>
+                <p style="margin-bottom: 1rem;">🏆 <strong>Points System</strong> - Track your courage!</p>
+                <p>🗳️ <strong>Group Voting</strong> - Rate each other's performances</p>
+            </div>
+            
+            <button onclick="showCreateProfile()">🏠 Create Room (Host)</button>
+            <button class="secondary-btn" onclick="showJoinProfile()">🚪 Join Room</button>
+        </div>
+
+        <!-- Profile Creation Screen -->
+        <div id="profileScreen" class="screen">
+            <h2>Create Your Profile</h2>
+            <p class="subtitle">Show your personality!</p>
+            
+            <div class="profile-setup">
+                <input type="text" id="playerName" placeholder="Enter your name" maxlength="15">
+                
+                <h3 style="margin: 2rem 0 1rem;">Choose Your Avatar:</h3>
+                <div class="avatar-selector" id="avatarSelector">
+                    <div class="avatar-option" data-avatar="😎" onclick="selectAvatar('😎')">😎</div>
+                    <div class="avatar-option" data-avatar="🤠" onclick="selectAvatar('🤠')">🤠</div>
+                    <div class="avatar-option" data-avatar="🥳" onclick="selectAvatar('🥳')">🥳</div>
+                    <div class="avatar-option" data-avatar="🤓" onclick="selectAvatar('🤓')">🤓</div>
+                    <div class="avatar-option" data-avatar="😤" onclick="selectAvatar('😤')">😤</div>
+                    <div class="avatar-option" data-avatar="🤩" onclick="selectAvatar('🤩')">🤩</div>
+                    <div class="avatar-option" data-avatar="😈" onclick="selectAvatar('😈')">😈</div>
+                    <div class="avatar-option" data-avatar="🤡" onclick="selectAvatar('🤡')">🤡</div>
+                </div>
+
+                <h3 style="margin: 2rem 0 1rem;">Pick Your Color Theme:</h3>
+                <div class="color-selector" id="colorSelector">
+                    <div class="color-option" style="background: linear-gradient(45deg, #ff6b6b, #ee5a24);" data-color="#ff6b6b" onclick="selectColor('#ff6b6b')"></div>
+                    <div class="color-option" style="background: linear-gradient(45deg, #4ecdc4, #44a08d);" data-color="#4ecdc4" onclick="selectColor('#4ecdc4')"></div>
+                    <div class="color-option" style="background: linear-gradient(45deg, #45b7d1, #2980b9);" data-color="#45b7d1" onclick="selectColor('#45b7d1')"></div>
+                    <div class="color-option" style="background: linear-gradient(45deg, #96ceb4, #2ecc71);" data-color="#96ceb4" onclick="selectColor('#96ceb4')"></div>
+                    <div class="color-option" style="background: linear-gradient(45deg, #feca57, #ff9ff3);" data-color="#feca57" onclick="selectColor('#feca57')"></div>
+                    <div class="color-option" style="background: linear-gradient(45deg, #ff9ff3, #ee5a24);" data-color="#ff9ff3" onclick="selectColor('#ff9ff3')"></div>
+                    <div class="color-option" style="background: linear-gradient(45deg, #54a0ff, #2e86de);" data-color="#54a0ff" onclick="selectColor('#54a0ff')"></div>
+                    <div class="color-option" style="background: linear-gradient(45deg, #5f27cd, #341f97);" data-color="#5f27cd" onclick="selectColor('#5f27cd')"></div>
+                </div>
+
+                <div style="margin: 2rem 0;">
+                    <h4>Preview:</h4>
+                    <div class="player-avatar" id="profilePreview" style="margin: 1rem auto; background: linear-gradient(45deg, #ff6b6b, #ee5a24);">
+                        😎
+                    </div>
+                </div>
+
+                <button onclick="saveProfile()">✅ Continue</button>
+                <button class="secondary-btn" onclick="showLanding()">Back</button>
+            </div>
+        </div>
+
+        <!-- Join Room Screen -->
+        <div id="joinRoomScreen" class="screen">
+            <h2>Join a Room</h2>
+            <p class="subtitle">Enter the room code from your host</p>
+            
+            <input type="text" id="joinRoomCode" placeholder="Enter room code (e.g., PARTY-AB12)" 
+                   style="text-align: center; font-size: 1.4rem; letter-spacing: 2px; text-transform: uppercase;">
+            <br>
+            <button onclick="joinRoom()">Join Room <span class="emoji">🚀</span></button>
+            <button class="secondary-btn" onclick="showLanding()">Back</button>
+        </div>
+
+        <!-- Host Setup Screen -->
+        <div id="hostSetupScreen" class="screen">
+            <div class="room-info">
+                <div>
+                    <h3>Room Code:</h3>
+                    <div class="room-code" id="roomCodeDisplay">LOADING...</div>
+                </div>
+                <div class="host-badge">👑 You are the Host</div>
+            </div>
+            
+            <div style="background: rgba(255, 255, 255, 0.1); padding: 1.5rem; border-radius: 15px; margin: 1rem 0;">
+                <h3>📤 Share this code with your friends:</h3>
+                <p style="margin: 1rem 0; font-size: 1.1rem;">Send them: <strong id="shareableCode">LOADING...</strong></p>
+                <button class="secondary-btn" onclick="copyRoomCode()" style="padding: 0.8rem 1.5rem;">
+                    📋 Copy Room Code
+                </button>
+            </div>
+
+            <div style="background: rgba(255, 255, 255, 0.1); padding: 1rem; border-radius: 15px; margin: 1rem 0;">
+                <p><strong>👥 Players Online: <span id="playerCount">1</span></strong></p>
+            </div>
+            
+            <div class="player-grid" id="lobbyPlayerGrid">
+                <!-- Players will be added here -->
+            </div>
+
+            <div class="quick-actions">
+                <button onclick="startGame()" id="startGameBtn">
+                    🎮 Start Game
+                </button>
+                <button class="secondary-btn" onclick="leaveRoom()">Leave Room</button>
+            </div>
+        </div>
+
+        <!-- Main Game Screen -->
+        <div id="gameScreen" class="screen">
+            <!-- Game Stats -->
+            <div class="game-stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="roundNumber">1</div>
+                    <div class="stat-label">Round</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalChallenges">0</div>
+                    <div class="stat-label">Challenges</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="playersOnline">0</div>
+                    <div class="stat-label">Players Online</div>
+                </div>
+            </div>
+
+            <!-- Player Grid -->
+            <div class="player-grid" id="gamePlayerGrid">
+                <!-- Players will be populated here -->
+            </div>
+
+            <!-- Spinning Wheels -->
+            <div class="wheel-container">
+                <div class="wheel" id="playerWheel">
+                    <div id="wheelSegments">
+                        <!-- Segments will be populated dynamically -->
+                    </div>
+                </div>
+                <div class="wheel-arrow"></div>
+                <div class="wheel-center" onclick="spinWheel()" id="spinButton">
+                    🎯<br>SPIN
+                </div>
+            </div>
+
+            <!-- Truth or Dare Type Wheel -->
+            <div class="challenge-type-wheel">
+                <div class="wheel" id="challengeTypeWheel">
+                    <div class="truth-dare-labels">
+                        <div class="truth-label">TRUTH</div>
+                        <div class="dare-label">DARE</div>
+                    </div>
+                </div>
+                <div class="wheel-arrow"></div>
+            </div>
+
+            <!-- Game Controls -->
+            <div class="quick-actions">
+                <button onclick="revealChallenge()" id="revealBtn" style="display: none;">
+                    🎭 Reveal Challenge
+                </button>
+                <button class="secondary-btn" onclick="resetWheel()" id="resetBtn" style="display: none;">
+                    🔄 Spin Again
+                </button>
+                <button class="secondary-btn" onclick="endGame()">End Game</button>
+            </div>
+
+            <!-- Voting Panel -->
+            <div class="voting-panel" id="votingPanel" style="display: none;">
+                <h3>🗳️ Rate the Performance!</h3>
+                <p>How well did <span id="votingPlayerName">Player</span> do?</p>
+                <div class="vote-options">
+                    <button class="vote-btn" onclick="vote(1)">😬 Meh (1pt)</button>
+                    <button class="vote-btn" onclick="vote(2)">😊 Good (2pts)</button>
+                    <button class="vote-btn" onclick="vote(3)">🤩 Amazing! (3pts)</button>
+                </div>
+                <p style="font-size: 0.9rem; opacity: 0.8;">Voting ends in <span id="voteTimer">10</span> seconds</p>
+            </div>
+
+            <!-- Game Overlay for Challenges -->
+            <div class="game-overlay" id="gameOverlay">
+                <div class="challenge-card" id="challengeCard">
+                    <h3 id="challengePlayerName"></h3>
+                    <p id="challengeText"></p>
+                </div>
+                <div class="quick-actions">
+                    <button onclick="completeChallenge()">✅ Done!</button>
+                    <button class="secondary-btn" onclick="skipChallenge()">⏭️ Skip</button>
+                    <button class="secondary-btn" onclick="closeChallenge()">❌ Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration - REPLACE WITH YOUR OWN FIREBASE CONFIG
+        const firebaseConfig = {
+  apiKey: "AIzaSyASsS66rTOb4JKzeQIn-m7arvS0h-RdoqY",
+  authDomain: "t-ord-bd156.firebaseapp.com",
+  databaseURL: "https://t-ord-bd156-default-rtdb.firebaseio.com",
+  projectId: "t-ord-bd156",
+  storageBucket: "t-ord-bd156.firebasestorage.app",
+  messagingSenderId: "1099464441773",
+  appId: "1:1099464441773:web:3bc021c7ee9a454aa92b24"
+};
+   
+
+        // Initialize Firebase
+        let database;
+        let roomRef;
+        let playersRef;
+        let gameStateRef;
+
+        try {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            showNotification('Connected to server! 🎉', 'success');
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+            showNotification('Using demo mode. Set up Firebase for multiplayer!', 'error');
+        }
+
+        // Game State
+        let gameState = {
+            isHost: false,
+            roomCode: '',
+            myPlayerId: '',
+            myProfile: {
+                name: '',
+                avatar: '😎',
+                color: '#ff6b6b',
+                score: 0
+            },
+            participants: {},
+            gameActive: false,
+            currentRound: 1,
+            totalChallenges: 0,
+            wheelSpinning: false,
+            selectedPlayer: null,
+            selectedChallengeType: null,
+            votingActive: false,
+            votes: {},
+            voteTimer: null,
+            isJoining: false
+        };
+
+        // Game Data
+        const challenges = {
+            truths: [
+                "What's the most embarrassing thing that's happened to you in class?",
+                "Who was your first crush and why?",
+                "What's your biggest fear about university life?",
+                "Have you ever had a crush on a professor?",
+                "What's the most trouble you've gotten into at university?",
+                "What's your biggest academic failure?",
+                "Have you ever fallen asleep in class?",
+                "What's your most irrational fear?",
+                "Have you ever lied to get out of an assignment deadline?",
+                "What's your secret talent that nobody knows about?",
+                "What's the weirdest dream you've ever had?",
+                "Have you ever pretended to be sick to skip class?",
+                "What's your most embarrassing childhood memory?",
+                "Have you ever stalked someone on social media?",
+                "What's the biggest lie you've ever told your parents?"
+            ],
+            dares: [
+                "Do your best impression of your favorite professor",
+                "Do 20 push-ups right now",
+                "Do your best runway walk across the room",
+                "Speak in an accent for the next 5 minutes",
+                "Dance with no music for 1 minute",
+                "Do your best celebrity impression",
+                "Sing your favorite song loudly",
+                "Do a cartwheel (or attempt one)",
+                "Act out a movie scene for others to guess",
+                "Do 10 jumping jacks while singing the alphabet",
+                "Do your best animal impression",
+                "Speak like a robot for the next 3 minutes",
+                "Do a dramatic reading of a text message",
+                "Attempt to breakdance",
+                "Sing everything you say for the next 2 minutes"
+            ]
+        };
+
+        // SCREEN MANAGEMENT
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function showLanding() {
+            cleanupRoom();
+            showScreen('landingScreen');
+        }
+
+        function showCreateProfile() {
+            gameState.isHost = true;
+            gameState.isJoining = false;
+            showScreen('profileScreen');
+        }
+
+        function showJoinProfile() {
+            gameState.isHost = false;
+            gameState.isJoining = true;
+            showScreen('profileScreen');
+        }
+
+        function cleanupRoom() {
+            if (roomRef) {
+                // Remove player from Firebase
+                if (gameState.myPlayerId && gameState.roomCode) {
+                    database.ref(`rooms/${gameState.roomCode}/players/${gameState.myPlayerId}`).remove();
+                }
+                roomRef = null;
+                playersRef = null;
+                gameStateRef = null;
+            }
+            
+            if (gameState.voteTimer) {
+                clearInterval(gameState.voteTimer);
+            }
+            
+            gameState = {
+                isHost: false,
+                roomCode: '',
+                myPlayerId: '',
+                myProfile: {
+                    name: '',
+                    avatar: '😎',
+                    color: '#ff6b6b',
+                    score: 0
+                },
+                participants: {},
+                gameActive: false,
+                currentRound: 1,
+                totalChallenges: 0,
+                wheelSpinning: false,
+                selectedPlayer: null,
+                selectedChallengeType: null,
+                votingActive: false,
+                votes: {},
+                voteTimer: null,
+                isJoining: false
+            };
+        }
+
+        // PROFILE CREATION
+        function selectAvatar(emoji) {
+            gameState.myProfile.avatar = emoji;
+            document.querySelectorAll('.avatar-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            document.querySelector(`[data-avatar="${emoji}"]`).classList.add('selected');
+            updateProfilePreview();
+        }
+
+        function selectColor(color) {
+            gameState.myProfile.color = color;
+            document.querySelectorAll('.color-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            document.querySelector(`[data-color="${color}"]`).classList.add('selected');
+            updateProfilePreview();
+        }
+
+        function updateProfilePreview() {
+            const preview = document.getElementById('profilePreview');
+            preview.textContent = gameState.myProfile.avatar;
+            preview.style.background = `linear-gradient(45deg, ${gameState.myProfile.color}, ${adjustColor(gameState.myProfile.color, -20)})`;
+        }
+
+        function adjustColor(color, amount) {
+            const num = parseInt(color.replace("#",""), 16);
+            const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+            const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
+            const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+            return "#" + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+        }
+
+        function saveProfile() {
+            const name = document.getElementById('playerName').value.trim();
+            
+            if (!name) {
+                showNotification('Please enter your name!', 'error');
+                return;
+            }
+            
+            if (name.length < 2) {
+                showNotification('Name must be at least 2 characters!', 'error');
+                return;
+            }
+            
+            gameState.myProfile.name = name;
+            
+            if (gameState.isHost) {
+                createRoom();
+            } else {
+                showScreen('joinRoomScreen');
+            }
+        }
+
+        // ROOM MANAGEMENT
+        function createRoom() {
+            if (!database) {
+                showNotification('Firebase not configured. Check console for setup instructions.', 'error');
+                return;
+            }
+
+            gameState.roomCode = generateRoomCode();
+            gameState.myPlayerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            roomRef = database.ref(`rooms/${gameState.roomCode}`);
+            playersRef = roomRef.child('players');
+            gameStateRef = roomRef.child('gameState');
+            
+            // Create room in Firebase
+            const roomData = {
+                hostId: gameState.myPlayerId,
+                createdAt: Date.now(),
+                gameStarted: false,
+                gameState: {
+                    currentRound: 1,
+                    totalChallenges: 0,
+                    wheelSpinning: false,
+                    selectedPlayer: null,
+                    selectedChallengeType: null,
+                    votingActive: false
+                }
+            };
+            
+            roomRef.set(roomData).then(() => {
+                // Add host as first player
+                return playersRef.child(gameState.myPlayerId).set({
+                    ...gameState.myProfile,
+                    id: gameState.myPlayerId,
+                    isHost: true,
+                    joinedAt: Date.now(),
+                    online: true
+                });
+            }).then(() => {
+                document.getElementById('roomCodeDisplay').textContent = gameState.roomCode;
+                document.getElementById('shareableCode').textContent = gameState.roomCode;
+                
+                setupRoomListeners();
+                showScreen('hostSetupScreen');
+                showNotification('Room created! Share the code with friends.', 'success');
+            }).catch(error => {
+                console.error('Error creating room:', error);
+                showNotification('Failed to create room. Please try again.', 'error');
+            });
+        }
+
+        function generateRoomCode() {
+            const prefixes = ['PARTY', 'UNIV', 'DARE', 'TRUTH', 'GAME', 'FUN'];
+            const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+            const suffix = Math.random().toString(36).substr(2, 4).toUpperCase();
+            return prefix + '-' + suffix;
+        }
+
+        function copyRoomCode() {
+            const code = gameState.roomCode;
+            navigator.clipboard.writeText(code).then(() => {
+                showNotification('Room code copied! 📋', 'success');
+            }).catch(() => {
+                showNotification(`Code: ${code}`, 'success');
+            });
+        }
+
+        function joinRoom() {
+            if (!database) {
+                showNotification('Firebase not configured. Check console for setup instructions.', 'error');
+                return;
+            }
+
+            const roomCode = document.getElementById('joinRoomCode').value.trim().toUpperCase();
+            
+            if (!roomCode) {
+                showNotification('Please enter a room code!', 'error');
+                return;
+            }
+            
+            if (!gameState.myProfile.name) {
+                showNotification('Please create your profile first!', 'error');
+                return;
+            }
+            
+            gameState.roomCode = roomCode;
+            gameState.myPlayerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            roomRef = database.ref(`rooms/${roomCode}`);
+            
+            // Check if room exists
+            roomRef.once('value').then(snapshot => {
+                if (!snapshot.exists()) {
+                    showNotification('Room not found! Check the code and try again.', 'error');
+                    return;
+                }
+                
+                const roomData = snapshot.val();
+                
+                if (roomData.gameStarted) {
+                    showNotification('Game already in progress. Wait for next round!', 'error');
+                    return;
+                }
+                
+                playersRef = roomRef.child('players');
+                gameStateRef = roomRef.child('gameState');
+                
+                // Add player to room
+                return playersRef.child(gameState.myPlayerId).set({
+                    ...gameState.myProfile,
+                    id: gameState.myPlayerId,
+                    isHost: false,
+                    joinedAt: Date.now(),
+                    online: true
+                });
+            }).then(() => {
+                setupRoomListeners();
+                showNotification('Joined room successfully!', 'success');
+            }).catch(error => {
+                console.error('Error joining room:', error);
+                showNotification('Failed to join room. Please try again.', 'error');
+            });
+        }
+
+        function leaveRoom() {
+            if (confirm('Are you sure you want to leave the room?')) {
+                showLanding();
+            }
+        }
+
+        // FIREBASE LISTENERS
+        function setupRoomListeners() {
+            // Listen for player changes
+            playersRef.on('value', snapshot => {
+                const players = snapshot.val() || {};
+                gameState.participants = players;
+                
+                const playerCount = Object.keys(players).length;
+                
+                // Update UI based on current screen
+                if (document.getElementById('hostSetupScreen').classList.contains('active')) {
+                    document.getElementById('playerCount').textContent = playerCount;
+                    updateLobbyPlayers();
+                } else if (document.getElementById('gameScreen').classList.contains('active')) {
+                    document.getElementById('playersOnline').textContent = playerCount;
+                    updatePlayerGrid();
+                    setupWheelSegments();
+                }
+            });
+            
+            // Listen for game state changes
+            gameStateRef.on('value', snapshot => {
+                const state = snapshot.val();
+                if (!state) return;
+                
+                // Update local game state
+                if (state.currentRound) gameState.currentRound = state.currentRound;
+                if (state.totalChallenges) gameState.totalChallenges = state.totalChallenges;
+                if (state.wheelSpinning !== undefined) gameState.wheelSpinning = state.wheelSpinning;
+                if (state.selectedPlayer) gameState.selectedPlayer = state.selectedPlayer;
+                if (state.selectedChallengeType) gameState.selectedChallengeType = state.selectedChallengeType;
+                
+                // Sync wheel rotation
+                if (state.wheelRotation !== undefined) {
+                    document.getElementById('playerWheel').style.transform = `rotate(${state.wheelRotation}deg)`;
+                    document.getElementById('challengeTypeWheel').style.transform = `rotate(${state.challengeRotation}deg)`;
+                }
+                
+                // Show/hide buttons based on wheel state
+                if (state.wheelSpinning) {
+                    document.getElementById('spinButton').innerHTML = '⏳<br>WAIT';
+                    document.getElementById('revealBtn').style.display = 'none';
+                    document.getElementById('resetBtn').style.display = 'none';
+                } else if (state.selectedPlayer) {
+                    document.getElementById('spinButton').innerHTML = '🎯<br>SPIN';
+                    document.getElementById('revealBtn').style.display = 'inline-block';
+                    document.getElementById('resetBtn').style.display = 'inline-block';
+                    highlightSelectedPlayer();
+                }
+                
+                // Sync challenge reveal
+                if (state.challengeRevealed && state.currentChallenge) {
+                    document.getElementById('challengePlayerName').textContent = 
+                        `${state.selectedPlayer.name} - ${state.selectedChallengeType.toUpperCase()}`;
+                    document.getElementById('challengeText').textContent = state.currentChallenge;
+                    document.getElementById('gameOverlay').classList.add('active');
+                }
+                
+                // Sync voting
+                if (state.votingActive && !gameState.votingActive) {
+                    syncVoting(state);
+                }
+                
+                updateGameStats();
+            });
+            
+            // Listen for room start
+            roomRef.child('gameStarted').on('value', snapshot => {
+                if (snapshot.val() === true && !gameState.gameActive) {
+                    gameState.gameActive = true;
+                    showScreen('gameScreen');
+                    setupGame();
+                    showNotification('Game started!', 'success');
+                }
+            });
+        }
+
+        // LOBBY UPDATES
+        function updateLobbyPlayers() {
+            const grid = document.getElementById('lobbyPlayerGrid');
+            grid.innerHTML = '';
+            
+            Object.values(gameState.participants).forEach(player => {
+                const card = createPlayerCard(player, true);
+                grid.appendChild(card);
+            });
+        }
+
+        function createPlayerCard(player, isLobby = false) {
+            const card = document.createElement('div');
+            card.className = 'player-card';
+            card.id = `player-${player.id}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'player-avatar';
+            avatar.textContent = player.avatar;
+            avatar.style.background = `linear-gradient(45deg, ${player.color}, ${adjustColor(player.color, -20)})`;
+            
+            // Online indicator
+            if (player.online) {
+                const onlineInd = document.createElement('div');
+                onlineInd.className = 'online-indicator';
+                avatar.appendChild(onlineInd);
+            }
+            
+            const name = document.createElement('div');
+            name.className = 'player-name';
+            name.textContent = player.name + (player.isHost ? ' 👑' : '');
+            
+            const score = document.createElement('div');
+            score.className = 'player-score';
+            score.textContent = `Score: ${player.score || 0} pts`;
+            
+            card.appendChild(avatar);
+            card.appendChild(name);
+            if (!isLobby) {
+                card.appendChild(score);
+            }
+            
+            return card;
+        }
+
+        // GAME SETUP
+        function startGame() {
+            if (Object.keys(gameState.participants).length < 2) {
+                showNotification('Need at least 2 players to start!', 'error');
+                return;
+            }
+            
+            if (!gameState.isHost) {
+                showNotification('Only the host can start the game!', 'error');
+                return;
+            }
+            
+            roomRef.child('gameStarted').set(true);
+        }
+
+        function setupGame() {
+            updatePlayerGrid();
+            setupWheelSegments();
+            updateGameStats();
+        }
+
+        function updatePlayerGrid() {
+            const grid = document.getElementById('gamePlayerGrid');
+            grid.innerHTML = '';
+            
+            Object.values(gameState.participants).forEach(player => {
+                const card = createPlayerCard(player, false);
+                grid.appendChild(card);
+            });
+        }
+
+        function updateGameStats() {
+            document.getElementById('roundNumber').textContent = gameState.currentRound;
+            document.getElementById('totalChallenges').textContent = gameState.totalChallenges;
+            document.getElementById('playersOnline').textContent = Object.keys(gameState.participants).length;
+        }
+
+        // SPINNING WHEEL
+        function setupWheelSegments() {
+            const participants = Object.values(gameState.participants);
+            const wheelSegments = document.getElementById('wheelSegments');
+            wheelSegments.innerHTML = '';
+            
+            const segmentAngle = 360 / participants.length;
+            const colors = [
+                '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', 
+                '#feca57', '#ff9ff3', '#54a0ff', '#5f27cd'
+            ];
+            
+            participants.forEach((participant, index) => {
+                const segment = document.createElement('div');
+                segment.className = 'wheel-segment';
+                segment.textContent = participant.name;
+                segment.style.transform = `rotate(${index * segmentAngle}deg)`;
+                segment.style.background = colors[index % colors.length];
+                segment.style.clipPath = `polygon(0 100%, 100% 100%, 50% 0)`;
+                wheelSegments.appendChild(segment);
+            });
+        }
+
+        function spinWheel() {
+            if (gameState.wheelSpinning) {
+                showNotification('Wheel is already spinning!', 'error');
+                return;
+            }
+            
+            if (!gameState.isHost) {
+                showNotification('Only the host can spin the wheel!', 'error');
+                return;
+            }
+            
+            const participants = Object.values(gameState.participants);
+            
+            if (participants.length < 2) {
+                showNotification('Need at least 2 players!', 'error');
+                return;
+            }
+            
+            // Random rotations
+            const playerSpins = 5 + Math.random() * 5;
+            const challengeSpins = 3 + Math.random() * 3;
+            
+            const playerFinalAngle = playerSpins * 360;
+            const challengeFinalAngle = challengeSpins * 360;
+            
+            // Update Firebase with spin state
+            gameStateRef.update({
+                wheelSpinning: true,
+                wheelRotation: playerFinalAngle,
+                challengeRotation: challengeFinalAngle
+            });
+            
+            // Calculate results after animation
+            setTimeout(() => {
+                const segmentAngle = 360 / participants.length;
+                const normalizedAngle = (360 - (playerFinalAngle % 360)) % 360;
+                const playerIndex = Math.floor(normalizedAngle / segmentAngle);
+                const selectedPlayer = participants[playerIndex];
+                
+                const challengeAngle = (360 - (challengeFinalAngle % 360)) % 360;
+                const selectedType = challengeAngle < 180 ? 'truth' : 'dare';
+                
+                // Update Firebase with results
+                gameStateRef.update({
+                    wheelSpinning: false,
+                    selectedPlayer: selectedPlayer,
+                    selectedChallengeType: selectedType,
+                    challengeRevealed: false
+                });
+                
+                showNotification(`${selectedPlayer.name} gets a ${selectedType}!`, 'success');
+            }, 4000);
+        }
+
+        function highlightSelectedPlayer() {
+            document.querySelectorAll('.player-card').forEach(card => {
+                card.classList.remove('current-player');
+            });
+            
+            if (gameState.selectedPlayer) {
+                const playerCard = document.getElementById(`player-${gameState.selectedPlayer.id}`);
+                if (playerCard) {
+                    playerCard.classList.add('current-player');
+                }
+            }
+        }
+
+        function resetWheel() {
+            if (!gameState.isHost) {
+                showNotification('Only the host can reset the wheel!', 'error');
+                return;
+            }
+            
+            gameStateRef.update({
+                wheelRotation: 0,
+                challengeRotation: 0,
+                selectedPlayer: null,
+                selectedChallengeType: null,
+                wheelSpinning: false,
+                challengeRevealed: false,
+                currentChallenge: null,
+                votingActive: false
+            });
+            
+            document.getElementById('gameOverlay').classList.remove('active');
+            document.getElementById('votingPanel').style.display = 'none';
+        }
+
+        // CHALLENGE MANAGEMENT
+        function revealChallenge() {
+            if (!gameState.isHost) {
+                showNotification('Only the host can reveal challenges!', 'error');
+                return;
+            }
+            
+            if (!gameState.selectedPlayer || !gameState.selectedChallengeType) {
+                showNotification('Please spin the wheel first!', 'error');
+                return;
+            }
+            
+            const challengeArray = challenges[gameState.selectedChallengeType + 's'];
+            const randomChallenge = challengeArray[Math.floor(Math.random() * challengeArray.length)];
+            
+            gameStateRef.update({
+                challengeRevealed: true,
+                currentChallenge: randomChallenge,
+                totalChallenges: (gameState.totalChallenges || 0) + 1
+            });
+        }
+
+        function completeChallenge() {
+            if (!gameState.isHost) {
+                showNotification('Only the host can complete challenges!', 'error');
+                return;
+            }
+            
+            document.getElementById('gameOverlay').classList.remove('active');
+            startVoting();
+        }
+
+        function skipChallenge() {
+            if (!gameState.isHost) {
+                showNotification('Only the host can skip challenges!', 'error');
+                return;
+            }
+            
+            resetWheel();
+            showNotification('Challenge skipped!', 'success');
+        }
+
+        function closeChallenge() {
+            document.getElementById('gameOverlay').classList.remove('active');
+        }
+
+        // VOTING SYSTEM
+        function startVoting() {
+            if (!gameState.selectedPlayer) return;
+            
+            gameStateRef.update({
+                votingActive: true,
+                votingPlayerName: gameState.selectedPlayer.name,
+                votingPlayerId: gameState.selectedPlayer.id,
+                voteEndTime: Date.now() + 10000,
+                votes: {}
+            });
+        }
+
+        function syncVoting(state) {
+            gameState.votingActive = true;
+            
+            document.getElementById('votingPanel').style.display = 'block';
+            document.getElementById('votingPlayerName').textContent = state.votingPlayerName;
+            
+            const timeLeft = Math.max(0, Math.floor((state.voteEndTime - Date.now()) / 1000));
+            document.getElementById('voteTimer').textContent = timeLeft;
+            
+            if (gameState.voteTimer) clearInterval(gameState.voteTimer);
+            
+            gameState.voteTimer = setInterval(() => {
+                const remaining = Math.max(0, Math.floor((state.voteEndTime - Date.now()) / 1000));
+                document.getElementById('voteTimer').textContent = remaining;
+                
+                if (remaining <= 0) {
+                    clearInterval(gameState.voteTimer);
+                    if (gameState.isHost) {
+                        endVoting();
+                    }
+                }
+            }, 1000);
+        }
+
+        function vote(points) {
+            if (!gameState.votingActive) {
+                showNotification('Voting is not active!', 'error');
+                return;
+            }
+            
+            gameStateRef.child('votes').child(gameState.myPlayerId).set(points);
+            
+            document.querySelectorAll('.vote-btn').forEach(btn => {
+                btn.classList.remove('voted');
+            });
+            event.target.classList.add('voted');
+            
+            showNotification(`You voted ${points} points!`, 'success');
+        }
+
+        function endVoting() {
+            if (!gameState.isHost) return;
+            
+            gameStateRef.child('votes').once('value').then(snapshot => {
+                const votes = snapshot.val() || {};
+                const voteValues = Object.values(votes);
+                
+                if (voteValues.length > 0) {
+                    const avgScore = Math.round(voteValues.reduce((a, b) => a + b, 0) / voteValues.length);
+                    
+                    gameStateRef.once('value').then(stateSnapshot => {
+                        const state = stateSnapshot.val();
+                        if (state.votingPlayerId) {
+                            playersRef.child(state.votingPlayerId).child('score').transaction(currentScore => {
+                                return (currentScore || 0) + avgScore;
+                            });
+                        }
+                    });
+                    
+                    showNotification(`Earned ${avgScore} points!`, 'success');
+                }
+                
+                gameStateRef.update({
+                    votingActive: false,
+                    currentRound: (gameState.currentRound || 1) + 1
+                });
+                
+                document.getElementById('votingPanel').style.display = 'none';
+                document.querySelectorAll('.vote-btn').forEach(btn => {
+                    btn.classList.remove('voted');
+                });
+                
+                setTimeout(() => resetWheel(), 1000);
+            });
+        }
+
+        function endGame() {
+            if (!gameState.isHost) {
+                showNotification('Only the host can end the game!', 'error');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to end the game?')) {
+                // Show final scores
+                const sortedPlayers = Object.values(gameState.participants).sort((a, b) => (b.score || 0) - (a.score || 0));
+                let message = '🏆 Final Scores:\n\n';
+                sortedPlayers.forEach((player, index) => {
+                    message += `${index + 1}. ${player.name}: ${player.score || 0} pts\n`;
+                });
+                alert(message);
+                
+                // Delete room from Firebase
+                if (roomRef) {
+                    roomRef.remove();
+                }
+                
+                showLanding();
+            }
+        }
+
+        // NOTIFICATION SYSTEM
+        function showNotification(message, type = 'success') {
+            const existing = document.querySelector('.notification');
+            if (existing) {
+                existing.remove();
+            }
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // INITIALIZE
+        document.addEventListener('DOMContentLoaded', function() {
+            selectAvatar('😎');
+            selectColor('#ff6b6b');
+            
+            // Show Firebase setup message if not configured
+            if (!database || firebaseConfig.apiKey === "AIzaSyDEMO-API-KEY-REPLACE-THIS") {
+                console.log('%c🔥 FIREBASE SETUP REQUIRED', 'color: #ff6b6b; font-size: 20px; font-weight: bold;');
+                console.log('%cFollow these steps:', 'color: #4ecdc4; font-size: 14px;');
+                console.log('1. Go to https://console.firebase.google.com/');
+                console.log('2. Create a new project (free)');
+                console.log('3. Enable Realtime Database');
+                console.log('4. Get your config and replace firebaseConfig in the code');
+                console.log('5. Set database rules to: { "rules": { ".read": true, ".write": true } }');
+            }
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (gameState.myPlayerId && gameState.roomCode && database) {
+                database.ref(`rooms/${gameState.roomCode}/players/${gameState.myPlayerId}`).remove();
+            }
+        });
